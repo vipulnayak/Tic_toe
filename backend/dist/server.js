@@ -17,33 +17,42 @@ const promise_1 = require("mysql2/promise");
 const cors_1 = __importDefault(require("cors"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const dotenv_1 = __importDefault(require("dotenv"));
+// Load environment variables
+dotenv_1.default.config();
+// Create Express app
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
+// Database pool configuration
 const pool = (0, promise_1.createPool)({
-    host: 'localhost',
-    user: 'your_mysql_user',
-    password: 'your_mysql_password',
-    database: 'tictactoe_db',
-    connectionLimit: 10
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'vipulnayak',
+    database: process.env.DB_NAME || 'tictactoe_db',
+    connectionLimit: 10,
 });
-const SECRET_KEY = 'your_secret_key';
-app.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// Secret key for JWT
+const SECRET_KEY = process.env.SECRET_KEY || 'defaultsecretkey';
+// Default login credentials
+const DEFAULT_USERNAME = 'admin';
+const DEFAULT_PASSWORD = 'admin123';
+// Login route
+app.post('/login', (req, // Type-safe request body
+res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
-    const hashedPassword = yield bcrypt_1.default.hash(password, 10);
-    try {
-        const conn = yield pool.getConnection();
-        yield conn.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword]);
-        conn.release();
-        res.status(201).json({ message: 'User registered successfully' });
+    if (!username || !password) {
+        res.status(400).json({ message: 'Username and password are required' });
+        return;
     }
-    catch (error) {
-        res.status(500).json({ message: 'Error registering user' });
-    }
-}));
-app.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password } = req.body;
     try {
+        // Check against default credentials
+        if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
+            const token = jsonwebtoken_1.default.sign({ userId: 'default_admin' }, SECRET_KEY, { expiresIn: '1h' });
+            res.json({ token, message: 'Default admin login successful' });
+            return;
+        }
+        // Check against database credentials
         const conn = yield pool.getConnection();
         const [rows] = yield conn.query('SELECT * FROM users WHERE username = ?', [username]);
         conn.release();
@@ -62,9 +71,12 @@ app.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         }
     }
     catch (error) {
+        console.error('Error logging in:', error);
         res.status(500).json({ message: 'Error logging in' });
     }
 }));
-app.listen(3001, () => {
-    console.log('Server running on port 3001');
+// Start the server
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });

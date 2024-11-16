@@ -19,3 +19,7 @@ CREATE TABLE games (
   FOREIGN KEY (player2_id) REFERENCES users(id),
   FOREIGN KEY (winner_id) REFERENCES users(id)
 );
+
+-- Add a sample user with a plain text password (You should use hashed passwords in production)
+INSERT INTO users (username, password) 
+VALUES ('sampleuser', 'samplepassword');
